@@ -2,13 +2,11 @@ import streamlit as st
 import pandas as pd
 import random
 import time
-import matplotlib.pyplot as plt
 from mplsoccer import Pitch
 from agents import FeatureWorkerAgent, TacticalReasonerAgent, PersonaDispatcherAgent
 
 st.set_page_config(page_title="PitchPulse Studio", layout="wide", page_icon="⚽")
 
-# Initialize Agents
 worker_agent = FeatureWorkerAgent()
 reasoner_agent = TacticalReasonerAgent()
 dispatcher_agent = PersonaDispatcherAgent()
@@ -16,10 +14,15 @@ dispatcher_agent = PersonaDispatcherAgent()
 st.title("⚽ PitchPulse: Multi-Agent Match Intelligence")
 st.caption("Microsoft + Premier League Hackathon Engine • 3-Agent Collaborative Pipeline")
 
-# Sidebar Controls
+# --- SIDEBAR CONTROLS ---
 st.sidebar.header("⚙️ Studio Controls")
 persona_mode = st.sidebar.selectbox("Audience Mode", ["Pundit / Analyst", "Casual Fan (Global)"])
 lang_choice = st.sidebar.selectbox("Language Output", ["English", "Bahasa Indonesia", "Español"])
+
+st.sidebar.markdown("---")
+# Fitur baru: Toggle Auto-Play
+auto_play = st.sidebar.toggle("▶️ Live Auto-Play Stream", value=False)
+stream_speed = st.sidebar.slider("Stream Speed (seconds)", 1.0, 5.0, 2.5)
 
 TEAMS = ["Arsenal", "Chelsea"]
 EVENT_TYPES = ["Pass", "Tackle", "Interception", "Counter-Attack", "Shot"]
@@ -43,9 +46,8 @@ def run_agent_pipeline():
         "end_pos": (end_x, end_y)
     }
 
-    # Pipeline Handoff 1 -> 2 -> 3
     enriched = worker_agent.process_event(raw_event)
-    tactical_out = reasoner_agent.analyze_phase(enriched, st.session_state.get("raw_history", []))
+    tactical_out = reasoner_agent.analyze_phase(enriched, st.session_state.get("history", []))
     narrative = dispatcher_agent.format_output(tactical_out, persona_mode, lang_choice)
 
     return {
@@ -71,13 +73,12 @@ with col_left:
     
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button("Simulate Match Event", use_container_width=True):
+        if st.button("Simulate Match Event", use_container_width=True, disabled=auto_play):
             st.session_state.history.insert(0, run_agent_pipeline())
     with col_btn2:
         if st.button("Reset Feed", use_container_width=True):
             st.session_state.history = [run_agent_pipeline() for _ in range(4)]
 
-    # Stream Table
     df_table = pd.DataFrame([{
         "Time": e["Time"],
         "Team": e["Team"],
@@ -88,7 +89,6 @@ with col_left:
     } for e in st.session_state.history])
     st.dataframe(df_table, use_container_width=True, height=240)
 
-    # Broadcast Lower-Third Overlay
     st.markdown("### 📺 Broadcast Lower-Third Overlay")
     latest = st.session_state.history[0]
     st.info(f"**[{latest['Team'].upper()} • {latest['Event'].upper()}]**  \n{latest['Narrative']}")
@@ -109,3 +109,9 @@ with col_right:
     ax.set_title(f"Live Vector: {latest['Team']} ({sx}, {sy} -> {ex}, {ey}) | Phase: {latest['State']}", 
                  color='white', fontsize=10, pad=10)
     st.pyplot(fig)
+
+# --- AUTO-PLAY LOGIC ---
+if auto_play:
+    time.sleep(stream_speed)
+    st.session_state.history.insert(0, run_agent_pipeline())
+    st.rerun()
