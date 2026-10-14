@@ -1,4 +1,3 @@
-cat << 'EOF' > app.py
 import streamlit as st
 import pandas as pd
 import random
@@ -110,4 +109,3 @@ with col_right:
     ax.set_title(f"Live Vector: {latest['Team']} ({sx}, {sy} -> {ex}, {ey}) | Phase: {latest['State']}", 
                  color='white', fontsize=10, pad=10)
     st.pyplot(fig)
-EOF
